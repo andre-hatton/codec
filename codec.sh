@@ -35,7 +35,7 @@ isMP4()
         ok=0
     fi
     
-    if [ "$5" == "1920" ] && [ "$6" != "1080" ]
+    if [ "$5" == "1920" ] && [ "$6" == "1088" ]
     then
         ok=0
     fi
@@ -138,13 +138,13 @@ then
                 frame_rate_mode=${frame_rate_mode##*( )}
                 
                 hd=""
-                if [ "$width" == "1920" ] || [ "$height" == "1080" ]
+                if [ "$width" == "1920" ] && [ "$height" == "1080" ] || [ "$width" == "1920" ] && [ "$height" == "1088" ]
                 then
                     hd="hd1080"
-                elif [ "$width" == "1280" ] || [ "$height" == "720" ]
+                elif [ "$width" == "1280" ] && [ "$height" == "720" ]
                 then
                     hd="hd720"
-                elif [ "$width" == "640" ] || [ "$height" == "480" ]
+                elif [ "$width" == "640" ] && [ "$height" == "480" ]
                 then
                     hd="hd480"
                 fi
