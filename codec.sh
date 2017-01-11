@@ -117,8 +117,8 @@ then
         fi
     fi
     # Parcours de tout les fichiers à partir du répertoir donné
-    # find "$1" -type f | sort -n | while read i
-    find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
+    find "$1" -type f | sort -n | while read i
+    # find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
     do
         # récupération de lextension du fichier
         j=`echo $i | cut -f2 -d '.'`
