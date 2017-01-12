@@ -116,6 +116,11 @@ then
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
             if [ "$is_encoded" == "" ]
             then
+                media=`mediainfo --fullscan "$i"`
+                if [ "$media" == "" ]
+                then
+                    continue
+                fi
                 # retourne les codes vidéo et audio de la vidéo
                 codec_video=`mediainfo --fullscan "$i" | grep -i "Codecs Video" | cut -f2 -d ':'`
                 codec_audio=`mediainfo --fullscan "$i" | grep -i "audio codecs" | cut -f2 -d ':'`
@@ -138,7 +143,10 @@ then
                 frame_rate_mode=${frame_rate_mode##*( )}
                 
                 hd=""
-                if [ "$width" == "1920" ] && [ "$height" == "1080" ] || [ "$width" == "1920" ] && [ "$height" == "1088" ]
+                if [ "$width" == "1920" ] && [ "$height" == "1080" ]
+                then
+                    hd="hd1080"
+                elif [ "$width" == "1920" ] && [ "$height" == "1088" ]
                 then
                     hd="hd1080"
                 elif [ "$width" == "1280" ] && [ "$height" == "720" ]
