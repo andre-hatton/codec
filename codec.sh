@@ -136,6 +136,11 @@ then
                     continue
                 fi
                 # retourne les codes vidéo et audio de la vidéo
+                media=`mediainfo --fullscan "$i"`
+                if [ "$media" == "" ]
+                then
+                    break
+                fi
                 codec_video=`mediainfo --fullscan "$i" | grep -i "Codecs Video" | cut -f2 -d ':'`
                 codec_audio=`mediainfo --fullscan "$i" | grep -i "audio codecs" | cut -f2 -d ':'`
                 frame=`mediainfo --fullscan "$i" | grep -i  "Codec_Settings_RefFrames" | cut -f2 -d ':'`
