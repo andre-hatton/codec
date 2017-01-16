@@ -263,10 +263,12 @@ then
                                 echo "rm $init"
                                 rm "$init"
                             fi
+                            notify-send "convertion de $init terminée"
                         else
                             # probleme d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
+                                notify-send "erreur d'encodage $init reessai avec codec AC3"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
                                 if [ "$hd" == "" ]
@@ -299,15 +301,23 @@ then
                                         echo "rm $init"
                                         rm "$init"
                                     fi
+                                    notify-send "convertion de $init terminée"
                                 else
                                     # en cas d'erreur on supprime le fichier final mal converti
                                     echo "rm $to"
                                     rm "$to"
+                                    notify-send "convertion de $init échouée"
                                 fi
                             fi
                             # en cas d'erreur on supprime le fichier final mal converti
                             echo "rm $to"
                             rm "$to"
+                            if [ $code -eq 255 ]
+                                notify-send "convertion de $init annulée"
+                            then
+                            else
+                                notify-send "convertion de $init échouée"
+                            fi
                         fi
                     fi
                 else
