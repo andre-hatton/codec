@@ -98,9 +98,15 @@ isMkv()
 if [ $# -eq 1 ] || [ $# -eq 2 ]
 then
     thread=2
+    force=0
     if [ $# -eq 2 ]
     then
-        thread=$2
+        if [ "$2" == "-f" ]
+        then
+            force=1
+        else
+            thread=$2
+        fi
     fi
     # Parcours de tout les fichiers à partir du répertoir donné
     # find "$1" -type f | sort -n | while read i
@@ -114,7 +120,7 @@ then
         then
             echo "$i"
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-            if [ "$is_encoded" == "" ]
+            if [ "$is_encoded" == "" ] || [ "$force" == "1" ]
             then
                 media=`mediainfo --fullscan "$i"`
                 if [ "$media" == "" ]
@@ -175,6 +181,11 @@ then
                 if [ "$j" == "mkv" ]
                 then
                     encode=$(isMkv "$codec_video" "$codec_audio" "$codec_profile")
+                fi
+                
+                if [ "$force" == "1" ]
+                then
+                    encode=0
                 fi
                 
                 file_encode_txt="$codec_video and $codec_audio"
@@ -263,12 +274,12 @@ then
                                 echo "rm $init"
                                 rm "$init"
                             fi
-                            notify-send "convertion de $init terminée"
+                            notify-send "convertion de $init terminée en $runtime secondes"
                         else
                             # probleme d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
-                                notify-send "erreur d'encodage $init reessai avec codec AC3"
+                                notify-send "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
                                 if [ "$hd" == "" ]
@@ -301,20 +312,20 @@ then
                                         echo "rm $init"
                                         rm "$init"
                                     fi
-                                    notify-send "convertion de $init terminée"
+                                    notify-send "convertion de $init terminée en $runtime secondes"
                                 else
                                     # en cas d'erreur on supprime le fichier final mal converti
                                     echo "rm $to"
                                     rm "$to"
-                                    notify-send "convertion de $init échouée"
+                                    notify-send "convertion de $init échouée en $runtime secondes"
                                 fi
                             fi
                             # en cas d'erreur on supprime le fichier final mal converti
                             echo "rm $to"
                             rm "$to"
                             if [ $code -eq 255 ]
+			    then
                                 notify-send "convertion de $init annulée"
-                            then
                             else
                                 notify-send "convertion de $init échouée"
                             fi
