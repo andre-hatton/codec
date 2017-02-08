@@ -138,7 +138,7 @@ then
 	    	avconv -i "$i" -v error -f null
 		if [ "$?" == "1" ]
 		then
-			terminal-notifier -message "Fichier $i illisible"
+			terminal-notifier -title "convert.sh" -message "Fichier $i illisible"
 			continue
 		fi
                 media=`mediainfo --fullscan "$i"`
@@ -307,12 +307,12 @@ then
                                 echo "rm $init"
                                 rm "$init"
                             fi
-                            terminal-notifier -message "convertion de $init terminée en $runtime secondes"
+                            terminal-notifier -title "convert.sh" -message "convertion de $init terminée en $runtime secondes"
                         else
                             # probleme d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
-                                terminal-notifier -message "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
+                                terminal-notifier -title "convert.sh" -message "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
                                 if [ "$j" == "mkv" ]
@@ -351,12 +351,12 @@ then
                                         echo "rm $init"
                                         rm "$init"
                                     fi
-                                    terminal-notifier -message "convertion de $init terminée en $runtime secondes"
+                                    terminal-notifier -title "convert.sh" -message "convertion de $init terminée en $runtime secondes"
                                 else
                                     # en cas d'erreur on supprime le fichier final mal converti
                                     echo "rm $to"
                                     rm "$to"
-                                    terminal-notifier -message "convertion de $init échouée en $runtime secondes"
+                                    terminal-notifier -title "convert.sh" -message "convertion de $init échouée en $runtime secondes"
                                 fi
                             fi
                             # en cas d'erreur on supprime le fichier final mal converti
@@ -364,9 +364,9 @@ then
                             rm "$to"
                             if [ $code -eq 255 ]
 			    then
-                                terminal-notifier -message "convertion de $init annulée"
+                                terminal-notifier -title "convert.sh" -message "convertion de $init annulée"
                             else
-                                terminal-notifier -message "convertion de $init échouée"
+                                terminal-notifier -title "convert.sh" -message "convertion de $init échouée"
                             fi
                         fi
                     fi
