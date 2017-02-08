@@ -9,6 +9,8 @@ shopt -s extglob
 
 type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not installed.  Aborting."; exit 1; }
 type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed.  Aborting."; exit 1; }
+type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
+type terminal-notifier >/dev/null 2>&1 || { echo >&2 "I require terminal-notifier but it's not installed.  Aborting."; exit 1; }
 
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
@@ -131,8 +133,14 @@ then
         then
             echo "$i"
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || [ "$forceAvi" == "1" ] && [ "$j" == "avi" ] || [ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]
+            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ])
             then
+	    	avconv -i "$i" -v error -f null
+		if [ "$?" == "1" ]
+		then
+			terminal-notifier -message "Fichier $i illisible"
+			continue
+		fi
                 media=`mediainfo --fullscan "$i"`
                 if [ "$media" == "" ]
                 then
@@ -213,7 +221,8 @@ then
                 if [ "$encode" == "0" ]
                 then
                     # nom du fichier pour pouvoir créer le bon fichier final
-                    b=`basename "$i" | cut -f1 -d '.'`
+                    b=`basename "$i"`
+		    b=`echo ${b%.*}`
                     
                     # chemin absolu vers le fichier
                     path=$(dirname "$i")
@@ -298,12 +307,12 @@ then
                                 echo "rm $init"
                                 rm "$init"
                             fi
-                            notify-send "convertion de $init terminée en $runtime secondes"
+                            terminal-notifier -message "convertion de $init terminée en $runtime secondes"
                         else
                             # probleme d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
-                                notify-send "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
+                                terminal-notifier -message "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
                                 if [ "$j" == "mkv" ]
@@ -342,12 +351,12 @@ then
                                         echo "rm $init"
                                         rm "$init"
                                     fi
-                                    notify-send "convertion de $init terminée en $runtime secondes"
+                                    terminal-notifier -message "convertion de $init terminée en $runtime secondes"
                                 else
                                     # en cas d'erreur on supprime le fichier final mal converti
                                     echo "rm $to"
                                     rm "$to"
-                                    notify-send "convertion de $init échouée en $runtime secondes"
+                                    terminal-notifier -message "convertion de $init échouée en $runtime secondes"
                                 fi
                             fi
                             # en cas d'erreur on supprime le fichier final mal converti
@@ -355,9 +364,9 @@ then
                             rm "$to"
                             if [ $code -eq 255 ]
 			    then
-                                notify-send "convertion de $init annulée"
+                                terminal-notifier -message "convertion de $init annulée"
                             else
-                                notify-send "convertion de $init échouée"
+                                terminal-notifier -message "convertion de $init échouée"
                             fi
                         fi
                     fi
