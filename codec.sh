@@ -9,6 +9,8 @@ shopt -s extglob
 
 type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not installed.  Aborting."; exit 1; }
 type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed.  Aborting."; exit 1; }
+type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
+type notify-send >/dev/null 2>&1 || { echo >&2 "I require notify-send but it's not installed.  Aborting."; exit 1; }
 
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
@@ -131,8 +133,14 @@ then
         then
             echo "$i"
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || [ "$forceAvi" == "1" ] && [ "$j" == "avi" ] || [ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]
+            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ])
             then
+	    	avconv -i "$i" -v error -f null
+		if [ "$?" == "1" ]
+		then
+			echo "File $i non lisible"
+			continue
+		fi
                 media=`mediainfo --fullscan "$i"`
                 if [ "$media" == "" ]
                 then
@@ -214,7 +222,8 @@ then
                 if [ "$encode" == "0" ]
                 then
                     # nom du fichier pour pouvoir créer le bon fichier final
-                    b=`basename "$i" | cut -f1 -d '.'`
+                    b=`basename "$i"`
+		    b=`echo ${b%.*}`
                     
                     # chemin absolu vers le fichier
                     path=$(dirname "$i")
