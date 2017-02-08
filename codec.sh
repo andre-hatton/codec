@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#todo : HandBrakeCLI -i 01.mkv -o result.mp4 -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  --subtitle-burn "1" --srt-codeset utf8
+
 test=0
 
 # pour pouvoir supprimer les blancs d'un string
@@ -104,7 +106,13 @@ then
         if [ "$2" == "-f" ]
         then
             force=1
-        else
+        elif [ "$2" == "avi" ]
+	    then
+	        forceAvi=1
+	    elif [ "$2" == "mkv" ]
+	    then
+	        forceMKV=1
+	    else
             thread=$2
         fi
     fi
@@ -120,7 +128,7 @@ then
         then
             echo "$i"
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-            if [ "$is_encoded" == "" ] || [ "$force" == "1" ]
+            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || [ "$forceAvi" == "1" ] && [ "$j" == "avi" ] || [ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]
             then
                 media=`mediainfo --fullscan "$i"`
                 if [ "$media" == "" ]
@@ -176,11 +184,19 @@ then
                 if [ "$j" == "avi" ]
                 then
                     encode=$(isAVI "$codec_video" "$codec_audio" "$matrix" "$gcm")
+		            if [ "$forceAvi" == "1" ]
+		            then
+			            encode=0
+		            fi
                 fi
                 
                 if [ "$j" == "mkv" ]
                 then
                     encode=$(isMkv "$codec_video" "$codec_audio" "$codec_profile")
+                    if [ "$forceMKV" == "1" ]
+		            then
+			            encode=0
+		            fi
                 fi
                 
                 if [ "$force" == "1" ]
@@ -206,10 +222,10 @@ then
                     # le chemin du fichier final
                     to=`echo "$path/$b.mp4"`
 
-                    if [ "$j" == "mkv" ]
-                    then
-                        to=`echo $path/$b.mkv`
-                    fi
+                    #if [ "$j" == "mkv" ]
+                    #then
+                    #    to=`echo $path/$b.mkv`
+                    #fi
 
                     # pour vérifier si le fichier de base et final sont les même
                     same=0
@@ -220,10 +236,10 @@ then
                         # impossible à récupérer
                         same=1                        
                         to=`echo "$path/$b""_1.mp4"`
-                        if [ "$j" == "mkv" ]
-			            then
-			                to=`echo "$path/$b""_1.mkv"` 
-                        fi
+                        #if [ "$j" == "mkv" ]
+			            #then
+			            #    to=`echo "$path/$b""_1.mkv"` 
+                        #fi
                     fi
                     echo "convert $init to $to"
                     
@@ -243,13 +259,19 @@ then
                         # codec audio acc (encore en mode experimental mais libre de droit donc lisible sur tout support)
                         file_encode_txt="AVC and AAC LC"
                         start=`date +%s`
-                        if [ "$hd" == "" ]
+                        if [ "$j" == "mkv" ]
                         then
-                            echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                            avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                            echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
+                            HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
                         else
-                            echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                            avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                            if [ "$hd" == "" ]
+                            then
+                                echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+                                avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                            else
+                                echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+                                avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                            fi
                         fi
                        
                         # status de la commande avconv
@@ -282,13 +304,19 @@ then
                                 notify-send "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
-                                if [ "$hd" == "" ]
+                                if [ "$j" == "mkv" ]
                                 then
-                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
-                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+                                    echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
+                                    HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
                                 else
-                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
-                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+                                    if [ "$hd" == "" ]
+                                    then
+                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
+                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+                                    else
+                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
+                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+                                    fi
                                 fi
                                 
                                 code=$?
