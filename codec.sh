@@ -7,6 +7,9 @@ test=0
 # pour pouvoir supprimer les blancs d'un string
 shopt -s extglob
 
+type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not installed.  Aborting."; exit 1; }
+type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed.  Aborting."; exit 1; }
+
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
 {
