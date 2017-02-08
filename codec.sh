@@ -121,7 +121,7 @@ then
     find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
     do
         # récupération de lextension du fichier
-        j=`echo $i | cut -f2 -d '.'`
+	j=`echo $i |awk -F . '{if (NF>1) {print $NF}}'`
         
         # si c'est un fichier vidéo mp4, avi ou mkv
         if [ "$j" == "mp4" ] || [ "$j" == "avi" ] || [ "$j" == "mkv" ]
