@@ -219,7 +219,7 @@ then
                 file_encode_txt="$codec_video and $codec_audio"
                 echo $file_encode_txt
                 
-                # si l'encodage n'est pas bon il faut convertire la vidéo
+                # si l'encodage n'est pas bon il faut convertir la vidéo
                 if [ "$encode" == "0" ]
                 then
                     # nom du fichier pour pouvoir créer le bon fichier final
@@ -264,7 +264,7 @@ then
                         # 2 cpu utilisés
                         # les metadatas pour forcer un titre propre pour les clients
                         # la taille de la vidéo (1080p, 720p, 480p, autres)
-                        # crf 19 pour une qualité d'encodage plutot bonne
+                        # crf 19 pour une qualité d'encodage plutôt bonne
                         # tune pour précisé que c'est de l'animation et donc avoir un encodage optimisé
                         # profile pour précisé le profile du format High@L3.1 
                         # level qui correspond au profile
@@ -310,12 +310,12 @@ then
                                 echo "rm $init"
                                 rm "$init"
                             fi
-                            terminal-notifier -title "convert.sh" -message "convertion de $init terminée en $runtime secondes"
+                            terminal-notifier -title "convert.sh" -message "conversion de $init terminée en $runtime secondes"
                         else
                             # probleme d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
-                                terminal-notifier -title "convert.sh" -message "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
+                                terminal-notifier -title "convert.sh" -message "erreur d'encodage $init ressaie avec codec AC3 après $runtime secondes"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
                                 if [ "$j" == "mkv" ]
