@@ -7,6 +7,11 @@ test=0
 # pour pouvoir supprimer les blancs d'un string
 shopt -s extglob
 
+type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not installed.  Aborting."; exit 1; }
+type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed.  Aborting."; exit 1; }
+type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
+type terminal-notifier >/dev/null 2>&1 || { echo >&2 "I require terminal-notifier but it's not installed.  Aborting."; exit 1; }
+
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
 {
@@ -121,15 +126,21 @@ then
     # find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
     do
         # récupération de lextension du fichier
-        j=`echo $i | cut -f2 -d '.'`
+        j=`echo $i |awk -F . '{if (NF>1) {print $NF}}'`
         
         # si c'est un fichier vidéo mp4, avi ou mkv
         if [ "$j" == "mp4" ] || [ "$j" == "avi" ] || [ "$j" == "mkv" ]
         then
             echo "$i"
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || [ "$forceAvi" == "1" ] && [ "$j" == "avi" ] || [ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]
+            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ])
             then
+	    	type "$i"
+		if [ "$?" == "1" ]
+		then
+			terminal-notifier -title "convert.sh" -message "Fichier $i illisible"
+			continue
+		fi
                 media=`mediainfo --fullscan "$i"`
                 if [ "$media" == "" ]
                 then
@@ -210,7 +221,8 @@ then
                 if [ "$encode" == "0" ]
                 then
                     # nom du fichier pour pouvoir créer le bon fichier final
-                    b=`basename "$i" | cut -f1 -d '.'`
+                    b=`basename "$i"`
+		    b=`echo ${b%.*}`
                     
                     # chemin absolu vers le fichier
                     path=$(dirname "$i")
@@ -261,8 +273,9 @@ then
                         if [ "$j" == "mkv" ]
                         then
                             echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
-                            HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                            echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
                             exiftool -overwrite_original -all= "$to"
+
                         else
                             if [ "$hd" == "" ]
                             then
@@ -296,19 +309,20 @@ then
                                 echo "rm $init"
                                 rm "$init"
                             fi
-                            notify-send "convertion de $init terminée en $runtime secondes"
+                            terminal-notifier -title "convert.sh" -message "convertion de $init terminée en $runtime secondes"
                         else
                             # probleme d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
-                                notify-send "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
+                                terminal-notifier -title "convert.sh" -message "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
                                 if [ "$j" == "mkv" ]
                                 then
                                     echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
-                                    HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                                    echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
                                     exiftool -overwrite_original -all= "$to"
+
                                 else
                                     if [ "$hd" == "" ]
                                     then
@@ -341,12 +355,12 @@ then
                                         echo "rm $init"
                                         rm "$init"
                                     fi
-                                    notify-send "convertion de $init terminée en $runtime secondes"
+                                    terminal-notifier -title "convert.sh" -message "convertion de $init terminée en $runtime secondes"
                                 else
                                     # en cas d'erreur on supprime le fichier final mal converti
                                     echo "rm $to"
                                     rm "$to"
-                                    notify-send "convertion de $init échouée en $runtime secondes"
+                                    terminal-notifier -title "convert.sh" -message "convertion de $init échouée en $runtime secondes"
                                 fi
                             fi
                             # en cas d'erreur on supprime le fichier final mal converti
@@ -354,9 +368,9 @@ then
                             rm "$to"
                             if [ $code -eq 255 ]
 			    then
-                                notify-send "convertion de $init annulée"
+                                terminal-notifier -title "convert.sh" -message "convertion de $init annulée"
                             else
-                                notify-send "convertion de $init échouée"
+                                terminal-notifier -title "convert.sh" -message "convertion de $init échouée"
                             fi
                         fi
                     fi
