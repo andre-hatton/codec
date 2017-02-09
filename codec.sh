@@ -11,6 +11,7 @@ type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not install
 type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed.  Aborting."; exit 1; }
 type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
 type notify-send >/dev/null 2>&1 || { echo >&2 "I require notify-send but it's not installed.  Aborting."; exit 1; }
+type exiftool >/dev/null 2>&1 || { echo >&2 "I require exiftool but it's not installed.  Aborting."; exit 1; }
 
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
@@ -126,7 +127,7 @@ then
     find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
     do
         # récupération de lextension du fichier
-	j=`echo $i |awk -F . '{if (NF>1) {print $NF}}'`
+	    j=`echo $i |awk -F . '{if (NF>1) {print $NF}}'`
         
         # si c'est un fichier vidéo mp4, avi ou mkv
         if [ "$j" == "mp4" ] || [ "$j" == "avi" ] || [ "$j" == "mkv" ]
@@ -135,12 +136,12 @@ then
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
             if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ])
             then
-	    	type "$i"
-		if [ "$?" == "1" ]
-		then
-			echo "File $i non lisible"
-			continue
-		fi
+	        	type "$i" > /dev/null 2> /dev/null
+		        if [ "$?" == "1" ]
+		        then
+			        echo "File $i non lisible"
+			        continue
+		        fi
                 media=`mediainfo --fullscan "$i"`
                 if [ "$media" == "" ]
                 then
@@ -275,6 +276,7 @@ then
                         then
                             echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                             echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                            exiftool -overwrite_original -all= "$to"
                         else
                             if [ "$hd" == "" ]
                             then
@@ -320,6 +322,7 @@ then
                                 then
                                     echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                                     echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                                    exiftool -overwrite_original -all= "$to"
                                 else
                                     if [ "$hd" == "" ]
                                     then
