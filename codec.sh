@@ -262,6 +262,7 @@ then
                         then
                             echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                             HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                            exiftool -overwrite_original -all= "$to"
                         else
                             if [ "$hd" == "" ]
                             then
@@ -307,6 +308,7 @@ then
                                 then
                                     echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                                     HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                                    exiftool -overwrite_original -all= "$to"
                                 else
                                     if [ "$hd" == "" ]
                                     then
