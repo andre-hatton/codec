@@ -12,6 +12,7 @@ type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's
 type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
 type terminal-notifier >/dev/null 2>&1 || { echo >&2 "I require terminal-notifier but it's not installed.  Aborting."; exit 1; }
 
+
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
 {
@@ -139,6 +140,7 @@ then
 		if [ "$?" == "1" ]
 		then
 			terminal-notifier -title "convert.sh" -message "Fichier $i illisible"
+			echo "File $i non lisible"
 			continue
 		fi
                 media=`mediainfo --fullscan "$i"`
@@ -275,7 +277,6 @@ then
                             echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                             echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
                             exiftool -overwrite_original -all= "$to"
-
                         else
                             if [ "$hd" == "" ]
                             then
@@ -322,7 +323,6 @@ then
                                     echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                                     echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
                                     exiftool -overwrite_original -all= "$to"
-
                                 else
                                     if [ "$hd" == "" ]
                                     then
