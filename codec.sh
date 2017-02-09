@@ -11,7 +11,7 @@ type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not install
 type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed.  Aborting."; exit 1; }
 type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
 type terminal-notifier >/dev/null 2>&1 || { echo >&2 "I require terminal-notifier but it's not installed.  Aborting."; exit 1; }
-
+type exiftool >/dev/null 2>&1 || { echo >&2 "I require exiftool but it's not installed.  Aborting."; exit 1; }
 
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
@@ -136,7 +136,7 @@ then
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
             if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ])
             then
-	    	type "$i"
+	    	type "$i" > /dev/null 2>/dev/null
 		if [ "$?" == "1" ]
 		then
 			terminal-notifier -title "convert.sh" -message "Fichier $i illisible"
