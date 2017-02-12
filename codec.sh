@@ -4,6 +4,9 @@
 
 test=0
 
+echo "Suppression des fichiers en double dans l'historique (cela peut prendre un peu de temps)"
+./deleteDuplicateFileHistory.sh
+
 # pour pouvoir supprimer les blancs d'un string
 shopt -s extglob
 
@@ -12,6 +15,9 @@ type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's
 type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
 type terminal-notifier >/dev/null 2>&1 || { echo >&2 "I require terminal-notifier but it's not installed.  Aborting."; exit 1; }
 type exiftool >/dev/null 2>&1 || { echo >&2 "I require exiftool but it's not installed.  Aborting."; exit 1; }
+
+# on vérifie si la librairie aac stable est activé (sinon on utilise la librairie native non stable)
+libfdk=`avconv -codecs | grep libfdk_aac | wc -l`
 
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
@@ -107,6 +113,7 @@ if [ $# -eq 1 ] || [ $# -eq 2 ]
 then
     thread=2
     force=0
+    forceAc3=0
     if [ $# -eq 2 ]
     then
         if [ "$2" == "-f" ]
@@ -115,11 +122,14 @@ then
         elif [ "$2" == "avi" ]
 	    then
 	        forceAvi=1
+	elif [ "$2" == "ac3" ]
+	    then
+		forceAc3=1
 	    elif [ "$2" == "mkv" ]
 	    then
-	        forceMKV=1
+		forceMKV=1
 	    else
-            thread=$2
+	    thread=$2
         fi
     fi
     # Parcours de tout les fichiers à partir du répertoir donné
@@ -134,7 +144,8 @@ then
         then
             echo "$i"
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ])
+	    encode_type=`echo "$is_encoded" | cut -f2 -d '#'`
+            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]) || ([ "$forceAc3" == "1" ] && [[ "$encode_type" == *"AC3"* ]])
             then
 	    	type "$i" > /dev/null 2>/dev/null
 		if [ "$?" == "1" ]
@@ -191,6 +202,10 @@ then
                 if [ "$j" == "mp4" ]
                 then
                     encode=$(isMP4 "$codec_video" "$codec_audio" "$codec_profile" "$frame" "$width" "$height" "$frame_rate_mode")
+                    if [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
+                    then
+                        encode=0
+                    fi
                 fi
                 
                 if [ "$j" == "avi" ]
@@ -276,15 +291,26 @@ then
                         then
                             echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                             echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
-                            exiftool -overwrite_original -all= "$to"
                         else
                             if [ "$hd" == "" ]
                             then
-                                echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                                avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                                if [ $libfdk -gt 0 ]
+                                then
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+                                else
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                                fi
                             else
-                                echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                                avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                                if [ $libfdk -gt 0 ]
+                                then
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+                                else
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                                fi
                             fi
                         fi
                        
@@ -298,6 +324,10 @@ then
                         # si la conversion à fonctionné
                         if [ $code -eq 0 ] 
                         then
+                            if [ "$j" == "mkv" ]
+                            then
+                                exiftool -overwrite_original -all= "$to"
+                            fi
                             # si c'est le même fichier que la base on fait un simple mv
                             # sinon on supprime le fichier de base devenu inutile
                             if [ "$same" == "1" ]
@@ -322,7 +352,6 @@ then
                                 then
                                     echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
                                     echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
-                                    exiftool -overwrite_original -all= "$to"
                                 else
                                     if [ "$hd" == "" ]
                                     then
@@ -343,6 +372,10 @@ then
                                 # si la conversion à fonctionné
                                 if [ $code -eq 0 ] 
                                 then
+                                    if [ "$j" == "mkv" ]
+                                    then
+                                        exiftool -overwrite_original -all= "$to"
+                                    fi
                                     # si c'est le même fichier que la base on fait un simple mv
                                     # sinon on supprime le fichier de base devenu inutile
                                     if [ "$same" == "1" ]
@@ -378,7 +411,6 @@ then
                     echo "$i#$file_encode_txt#$hd" >> ~/.encode_file
                 fi # fin du test mauvais encodage
             else
-                encode_type=`echo "$is_encoded" | cut -f2 -d '#'`
                 echo "$encode_type"
             fi
         fi # fin test du type de fichier
