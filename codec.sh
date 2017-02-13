@@ -305,7 +305,7 @@ then
                                     if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
                                     then
                                         echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a libfdk_aac \"$to\""
-                                        avconv -y -i "$init" -threads -c:v copy -c:a libfdk_aac "$to"
+                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a libfdk_aac "$to"
                                     else
                                         echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
                                         avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
@@ -335,7 +335,7 @@ then
                                     if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
                                     then
                                         echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a aac -strict experimental \"$to\""
-                                        avconv -y -i "$init" -threads $thread -c:v hcopy -c:a aac -strict experimental "$to"
+                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a aac -strict experimental "$to"
                                     else
                                         echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
                                         avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
