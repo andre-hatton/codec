@@ -363,7 +363,7 @@ then
                             # sinon on supprime le fichier de base devenu inutile
                             if [ "$same" == "1" ]
                             then
-                                hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
+                                hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
                                 if [ "$hist" != "" ]
                                 then
                                     sed -i $hist'd' ~/.encode_file
@@ -372,7 +372,7 @@ then
                                 echo "mv $to $init"
                                 mv "$to" "$init"
                             else
-                                hist=`grep -rne "$to" ~/.encode_file | cut -f2 -d ':'`
+                                hist=`grep -rne "$to" ~/.encode_file | cut -f1 -d ':'`
                                 if [ "$hist" != "" ]
                                 then
                                     sed -i $hist'd' ~/.encode_file
@@ -406,7 +406,8 @@ then
                                         fi
                                     else
                                         if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                                        thenecho "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3 \"$to\""
+                                        then
+                                            echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3 \"$to\""
                                             avconv -y -i "$init" -threads $thread -c:v copy -c:a ac3 "$to"
                                         else
                                             echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
@@ -432,7 +433,7 @@ then
                                     # sinon on supprime le fichier de base devenu inutile
                                     if [ "$same" == "1" ]
                                     then
-                                        hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
+                                        hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
                                         if [ "$hist" != "" ]
                                         then
                                             sed -i $hist'd' ~/.encode_file
@@ -441,7 +442,7 @@ then
                                         echo "mv $to $init"
                                         mv "$to" "$init"
                                     else
-                                        hist=`grep -rne "$to" ~/.encode_file | cut -f2 -d ':'`
+                                        hist=`grep -rne "$to" ~/.encode_file | cut -f1 -d ':'`
                                         if [ "$hist" != "" ]
                                         then
                                             sed -i $hist'd' ~/.encode_file
@@ -470,7 +471,7 @@ then
                         fi
                     fi
                 else
-		            hist=`grep -rne "$i" ~/.encode_file | cut -f2 -d ':'`
+		            hist=`grep -rne "$i" ~/.encode_file | cut -f1 -d ':'`
                     if [ "$hist" != "" ]
                     then
                         sed -i $hist'd' ~/.encode_file
