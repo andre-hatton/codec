@@ -9,7 +9,6 @@ do
     dir_name=`dirname "$f"`
     search="$dir_name/$file_name."
     count=`cat ~/.encode_file | grep "$search" | wc -l`
-    echo "serach : $search   $count"
     if [ $count -gt 1 ]
     then
         echo $l
