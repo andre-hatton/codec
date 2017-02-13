@@ -363,10 +363,20 @@ then
                             # sinon on supprime le fichier de base devenu inutile
                             if [ "$same" == "1" ]
                             then
+                                hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
+                                if [ "$hist" != "" ]
+                                then
+                                    sed -i $hist'd' ~/.encode_file
+                                fi
                                 echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
                                 echo "mv $to $init"
                                 mv "$to" "$init"
                             else
+                                hist=`grep -rne "$to" ~/.encode_file | cut -f2 -d ':'`
+                                if [ "$hist" != "" ]
+                                then
+                                    sed -i $hist'd' ~/.encode_file
+                                fi
                                 echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
                                 echo "rm $init"
                                 rm "$init"
@@ -422,10 +432,20 @@ then
                                     # sinon on supprime le fichier de base devenu inutile
                                     if [ "$same" == "1" ]
                                     then
+                                        hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
+                                        if [ "$hist" != "" ]
+                                        then
+                                            sed -i $hist'd' ~/.encode_file
+                                        fi
                                         echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
                                         echo "mv $to $init"
                                         mv "$to" "$init"
                                     else
+                                        hist=`grep -rne "$to" ~/.encode_file | cut -f2 -d ':'`
+                                        if [ "$hist" != "" ]
+                                        then
+                                            sed -i $hist'd' ~/.encode_file
+                                        fi
                                         echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
                                         echo "rm $init"
                                         rm "$init"
@@ -450,6 +470,12 @@ then
                         fi
                     fi
                 else
+		            hist=`grep -rne "$i" ~/.encode_file | cut -f2 -d ':'`
+                    if [ "$hist" != "" ]
+                    then
+                        sed -i $hist'd' ~/.encode_file
+                    fi
+
                     echo "$i#$file_encode_txt#$hd" >> ~/.encode_file
                 fi # fin du test mauvais encodage
             else
