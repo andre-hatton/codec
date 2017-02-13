@@ -8,7 +8,7 @@ do
     if [ $count -gt 1 ]
     then
         echo $l
-        sed -i $i'd' ~/.encode_file
+        sed -i '' -e $i'd' ~/.encode_file
     else
         i=$((i+1))
     fi
