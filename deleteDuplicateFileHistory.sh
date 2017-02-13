@@ -2,9 +2,13 @@
 
 i=1
 cat ~/.encode_file | while read l
-do 
+do
     f=`echo $l | cut -f1 -d'#'`
-    count=`cat ~/.encode_file | grep "$f" | wc -l`
+    b=`basename "$f"`
+    file_name=`echo ${b%.*}`
+    dir_name=`dirname "$f"`
+    search="$dir_name/$file_name."
+    count=`cat ~/.encode_file | grep "$search" | wc -l`
     if [ $count -gt 1 ]
     then
         echo $l
