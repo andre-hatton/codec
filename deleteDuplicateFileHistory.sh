@@ -2,7 +2,7 @@
 
 i=1
 cat ~/.encode_file | while read l
-do 
+do
     f=`echo $l | cut -f1 -d'#'`
     b=`basename "$f"`
     file_name=`echo ${b%.*}`
