@@ -18,7 +18,6 @@ type exiftool >/dev/null 2>&1 || { echo >&2 "I require exiftool but it's not ins
 
 # on vérifie si la librairie aac stable est activé (sinon on utilise la librairie native non stable)
 libfdk=`avconv -codecs | grep libfdk_aac | wc -l`
-
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
 {
@@ -109,12 +108,12 @@ isMkv()
 }
 
 # l'argument du chemin est obligatoire
-if [ $# -eq 1 ] || [ $# -eq 2 ]
+if [ $# -gt 0 ]
 then
     thread=2
     force=0
     forceAc3=0
-    if [ $# -eq 2 ]
+    if [ $# -gt 1 ]
     then
         if [ "$2" == "-f" ]
         then
@@ -122,7 +121,7 @@ then
         elif [ "$2" == "avi" ]
 	    then
 	        forceAvi=1
-	elif [ "$2" == "ac3" ]
+  	elif [ "$2" == "ac3" ]
 	    then
 		forceAc3=1
 	    elif [ "$2" == "mkv" ]
@@ -132,6 +131,10 @@ then
 	    thread=$2
         fi
     fi
+		if [ "$3" == "copy" ] 
+		then
+			v_copy=1
+		fi
     # Parcours de tout les fichiers à partir du répertoir donné
     find "$1" -type f | sort -n | while read i
     # find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
@@ -144,7 +147,7 @@ then
         then
             echo "$i"
             is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-	    encode_type=`echo "$is_encoded" | cut -f2 -d '#'`
+       	    encode_type=`echo "$is_encoded" | cut -f2 -d '#'`
             if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]) || ([ "$forceAc3" == "1" ] && [[ "$encode_type" == *"AC3"* ]])
             then
 	    	type "$i" > /dev/null 2>/dev/null
@@ -234,7 +237,7 @@ then
                 file_encode_txt="$codec_video and $codec_audio"
                 echo $file_encode_txt
                 
-                # si l'encodage n'est pas bon il faut convertire la vidéo
+                # si l'encodage n'est pas bon il faut convertir la vidéo
                 if [ "$encode" == "0" ]
                 then
                     # nom du fichier pour pouvoir créer le bon fichier final
@@ -279,7 +282,7 @@ then
                         # 2 cpu utilisés
                         # les metadatas pour forcer un titre propre pour les clients
                         # la taille de la vidéo (1080p, 720p, 480p, autres)
-                        # crf 19 pour une qualité d'encodage plutot bonne
+                        # crf 19 pour une qualité d'encodage plutôt bonne
                         # tune pour précisé que c'est de l'animation et donc avoir un encodage optimisé
                         # profile pour précisé le profile du format High@L3.1 
                         # level qui correspond au profile
@@ -296,20 +299,44 @@ then
                             then
                                 if [ $libfdk -gt 0 ]
                                 then
-                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
-                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+																	  if [ "$v_copy" == "1" ]
+																		then
+																				echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a libfdk_aac \"$to\""
+                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a libfdk_aac "$to"
+																		else
+																        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
+                                    		avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+																		fi
                                 else
-                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+																		if [ "$v_copy" == "1" ]
+																		then
+																			echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a aac -strict experimental \"$to\""
+	                                    avconv -y -i "$init" -threads $thread -c:v copy -c:a aac -strict experimental "$to"
+																		else
+                                    	echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+                                    	avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+																		fi
                                 fi
                             else
                                 if [ $libfdk -gt 0 ]
                                 then
-                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
-                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+																	  if [ "$v_copy" == "1" ]
+																		then
+																			echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a libfdk_aac \"$to\""
+                                      avconv -y -i "$init" -threads $thread -c:v copy -c:a libfdk_aac "$to"
+																		else
+    		                                echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
+  	    	                              avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+																		fi
                                 else
-                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+																	  if [ "$v_copy" == "1" ]
+																		then
+																			  echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a aac -strict experimental \"$to\""
+                                        avconv -y -i "$init" -threads $thread -c:v copy  -c:a aac -strict experimental "$to"
+																		else
+	                                    	echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+  	                                  	avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+																		fi
                                 fi
                             fi
                         fi
@@ -350,12 +377,12 @@ then
                                 echo "rm $init"
                                 rm "$init"
                             fi
-                            terminal-notifier -title "convert.sh" -message "convertion de $init terminée en $runtime secondes"
+                            terminal-notifier -title "convert.sh" -message "conversion de $init terminée en $runtime secondes"
                         else
                             # probleme d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
-                                terminal-notifier -title "convert.sh" -message "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
+                                terminal-notifier -title "convert.sh" -message "erreur d'encodage $init ressaie avec codec AC3 après $runtime secondes"
                                 file_encode_txt="AVC and AC3"
                                 start=`date +%s`
                                 if [ "$j" == "mkv" ]
@@ -365,11 +392,23 @@ then
                                 else
                                     if [ "$hd" == "" ]
                                     then
-                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
-                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+																			  if [ "$v_copy" == "1" ]
+																				then
+	                                        echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3  \"$to\""
+	                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a ac3 "$to"
+																				else
+	                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
+  	                                      avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+																				fi
                                     else
-                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
-                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+																			  if [ "$v_copy" == "1" ]
+																				then
+																					echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3 \"$to\""
+                                          avconv -y -i "$init" -threads $thread -c:v copy -c:a ac3 "$to"
+																				else
+	                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
+  	                                      avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+																				fi
                                     fi
                                 fi
                                 
