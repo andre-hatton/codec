@@ -7,7 +7,7 @@ do
     b=`basename "$f"`
     file_name=`echo ${b%.*}`
     dir_name=`dirname "$f"`
-    search="$dir_name/$file_name."
+    search="$dir_name/$file_name\."
     count=`cat ~/.encode_file | grep "$search" | wc -l`
     if [ $count -gt 1 ]
     then

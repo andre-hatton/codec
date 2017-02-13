@@ -136,6 +136,10 @@ then
     then
 	    v_copy=1
     fi
+    if [ "$4" == "speed" ]
+    then
+        thread=0
+    fi
     
     # Parcours de tout les fichiers à partir du répertoir donné
     # find "$1" -type f | sort -n | while read i
