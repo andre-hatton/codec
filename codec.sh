@@ -4,8 +4,6 @@
 
 test=0
 
-echo "Suppression des fichiers en double dans l'historique (cela peut prendre un peu de temps)"
-./deleteDuplicateFileHistory.sh
 
 # pour pouvoir supprimer les blancs d'un string
 shopt -s extglob
@@ -108,384 +106,412 @@ isMkv()
     echo $ok
 }
 
-# l'argument du chemin est obligatoire
-if [ $# -gt 0 ]
+forceAc3=0
+forceMKV=0
+forceAvi=0
+force=0
+v_copy=0
+thread=0
+deleteDuplicate=0
+while getopts "i:t:f:cd" option
+do
+    case $option in
+    i)
+		    input=$OPTARG
+      ;;
+	    t)
+		    thread=$OPTARG
+		    ;;
+	    d)
+		    deleteDuplicate=1
+		    ;;
+	    f)
+		    if [ "$OPTARG" == "ac3" ]
+		    then
+			    forceAc3=1
+		    elif [ "$OPTARG" == "mkv" ]
+		    then
+			    forceMKV=1
+		    elif [ "$OPTARG" == "avi" ]
+		    then
+			    forceAvi=1
+		    elif [ "$OPTARG" == "all" ]
+		    then
+			    force=1
+		    fi
+		    ;;
+	    c)
+		    v_copy=1
+		    ;;
+	    :)
+		    echo "L'option $OPTARG requiert un argument"
+		    ;;
+	    \?)
+		    echo "$OPTARG : option invalide"
+		    exit 1
+		    ;;
+    esac
+done
+
+if [ "$input" == "" ]
 then
-    thread=2
-    force=0
-    forceAc3=0
-    if [ $# -gt 1 ]
-    then
-        if [ "$2" == "-f" ]
-        then
-            force=1
-        elif [ "$2" == "avi" ]
-	    then
-	        forceAvi=1
-        elif [ "$2" == "ac3" ]
-	    then
-	        forceAc3=1
-	    elif [ "$2" == "mkv" ]
-	    then
-	        forceMKV=1
-	    else
-            thread=$2
-        fi
-    fi
-    if [ "$3" == "copy" ] 
-    then
-	    v_copy=1
-    fi
-    if [ "$4" == "speed" ]
-    then
-        thread=0
-    fi
+	echo "Le chemin d'entrée est obligatoire : Option -i necessaire"
+	exit 1
+fi
+
+if [ "$deleteDuplicate" == "1" ]
+then
+	echo "Suppression des fichiers en double dans l'historique (cela peut prendre un peu de temps)"
+	./deleteDuplicateFileHistory.sh
+fi
+
+
+
     
-    # Parcours de tout les fichiers à partir du répertoir donné
-    # find "$1" -type f | sort -n | while read i
-    find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
-    do
-        # récupération de lextension du fichier
-	    j=`echo $i |awk -F . '{if (NF>1) {print $NF}}'`
-        
-        # si c'est un fichier vidéo mp4, avi ou mkv
-        if [ "$j" == "mp4" ] || [ "$j" == "avi" ] || [ "$j" == "mkv" ]
+# Parcours de tout les fichiers à partir du répertoir donné
+# find "$1" -type f | sort -n | while read i
+find "$input" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
+do
+    # récupération de lextension du fichier
+    j=`echo $i |awk -F . '{if (NF>1) {print $NF}}'`
+    
+    # si c'est un fichier vidéo mp4, avi ou mkv
+    if [ "$j" == "mp4" ] || [ "$j" == "avi" ] || [ "$j" == "mkv" ]
+    then
+        echo "$i"
+        is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
+        encode_type=`echo "$is_encoded" | cut -f2 -d '#'`
+        if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]) || ([ "$forceAc3" == "1" ] && [[ "$encode_type" == *"AC3"* ]])
         then
-            echo "$i"
-            is_encoded=`cat ~/.encode_file 2> /dev/null | grep "$i"`
-            encode_type=`echo "$is_encoded" | cut -f2 -d '#'`
-            if [ "$is_encoded" == "" ] || [ "$force" == "1" ] || ([ "$forceAvi" == "1" ] && [ "$j" == "avi" ]) || ([ "$forceMKV" == "1" ] && [ "$j" == "mkv" ]) || ([ "$forceAc3" == "1" ] && [[ "$encode_type" == *"AC3"* ]])
+        	type "$i" > /dev/null 2> /dev/null
+	        if [ "$?" == "1" ]
+	        then
+		        echo "File $i non lisible"
+		        continue
+	        fi
+            media=`mediainfo --fullscan "$i"`
+            if [ "$media" == "" ]
             then
-	        	type "$i" > /dev/null 2> /dev/null
-		        if [ "$?" == "1" ]
-		        then
-			        echo "File $i non lisible"
-			        continue
-		        fi
-                media=`mediainfo --fullscan "$i"`
-                if [ "$media" == "" ]
-                then
-                    continue
-                fi
-                # retourne les codes vidéo et audio de la vidéo
-                codec_video=`mediainfo --fullscan "$i" | grep -i "Codecs Video" | cut -f2 -d ':'`
-                codec_audio=`mediainfo --fullscan "$i" | grep -i "audio codecs" | cut -f2 -d ':'`
-                frame=`mediainfo --fullscan "$i" | grep -i  "Codec_Settings_RefFrames" | cut -f2 -d ':'`
-                matrix=`mediainfo --fullscan "$i" | grep -i  "Codec settings, Matrix" | cut -f2 -d ':'`
-                width=`mediainfo --fullscan "$i" | grep -i "Width" | cut -f2 -d ':' | head -n 1`
-                height=`mediainfo --fullscan "$i" | grep -i "Height" | cut -f2 -d ':' | head -n 1`
-                gcm=`mediainfo --fullscan "$i" | grep -i "Codec settings, GMC" | cut -f2 -d ':' | head -n 1`
-                frame_rate_mode=`mediainfo --fullscan "$i" | grep -i "Frame rate mode" | cut -f2 -d ':' | head -n 1`
-                
-                
-                # supprime les blanc avant et après les codecs
-                codec_video=${codec_video##*( )}
-                codec_audio=${codec_audio##*( )}
-                frame=${frame##*( )}
-                matrix=${matrix##*( )}
-                width=${width##*( )}
-                height=${height##*( )}
-                gcm=${gcm##*( )}
-                frame_rate_mode=${frame_rate_mode##*( )}
-                
-                hd=""
-                if [ "$width" == "1920" ] && [ "$height" == "1080" ]
-                then
-                    hd="hd1080"
-                elif [ "$width" == "1920" ] && [ "$height" == "1088" ]
-                then
-                    hd="hd1080"
-                elif [ "$width" == "1280" ] && [ "$height" == "720" ]
-                then
-                    hd="hd720"
-                elif [ "$width" == "640" ] && [ "$height" == "480" ]
-                then
-                    hd="hd480"
-                fi
-                echo "$width/$height = $hd"
-                
-                codec_profile=`mediainfo --fullscan "$i" | grep -i "Codec profile" | cut -f2 -d ':' | cut -f2 -d '@'`
-                codec_profile=${codec_profile##*( )}
-                
-                # pour chaque format on vérifie si l'encodage est bon
-                if [ "$j" == "mp4" ]
-                then
-                    encode=$(isMP4 "$codec_video" "$codec_audio" "$codec_profile" "$frame" "$width" "$height" "$frame_rate_mode")
-                    if [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                    then
-                        encode=0
-                    fi
-                fi
-                
-                if [ "$j" == "avi" ]
-                then
-                    encode=$(isAVI "$codec_video" "$codec_audio" "$matrix" "$gcm")
-		            if [ "$forceAvi" == "1" ]
-		            then
-			            encode=0
-		            fi
-                fi
-                
-                if [ "$j" == "mkv" ]
-                then
-                    encode=$(isMkv "$codec_video" "$codec_audio" "$codec_profile")
-                    if [ "$forceMKV" == "1" ]
-		            then
-			            encode=0
-		            fi
-                fi
-           
-                
-                if [ "$force" == "1" ]
+                continue
+            fi
+            # retourne les codes vidéo et audio de la vidéo
+            codec_video=`mediainfo --fullscan "$i" | grep -i "Codecs Video" | cut -f2 -d ':'`
+            codec_audio=`mediainfo --fullscan "$i" | grep -i "audio codecs" | cut -f2 -d ':'`
+            frame=`mediainfo --fullscan "$i" | grep -i  "Codec_Settings_RefFrames" | cut -f2 -d ':'`
+            matrix=`mediainfo --fullscan "$i" | grep -i  "Codec settings, Matrix" | cut -f2 -d ':'`
+            width=`mediainfo --fullscan "$i" | grep -i "Width" | cut -f2 -d ':' | head -n 1`
+            height=`mediainfo --fullscan "$i" | grep -i "Height" | cut -f2 -d ':' | head -n 1`
+            gcm=`mediainfo --fullscan "$i" | grep -i "Codec settings, GMC" | cut -f2 -d ':' | head -n 1`
+            frame_rate_mode=`mediainfo --fullscan "$i" | grep -i "Frame rate mode" | cut -f2 -d ':' | head -n 1`
+            
+            
+            # supprime les blanc avant et après les codecs
+            codec_video=${codec_video##*( )}
+            codec_audio=${codec_audio##*( )}
+            frame=${frame##*( )}
+            matrix=${matrix##*( )}
+            width=${width##*( )}
+            height=${height##*( )}
+            gcm=${gcm##*( )}
+            frame_rate_mode=${frame_rate_mode##*( )}
+            
+            hd=""
+            if [ "$width" == "1920" ] && [ "$height" == "1080" ]
+            then
+                hd="hd1080"
+            elif [ "$width" == "1920" ] && [ "$height" == "1088" ]
+            then
+                hd="hd1080"
+            elif [ "$width" == "1280" ] && [ "$height" == "720" ]
+            then
+                hd="hd720"
+            elif [ "$width" == "640" ] && [ "$height" == "480" ]
+            then
+                hd="hd480"
+            fi
+            echo "$width/$height = $hd"
+            
+            codec_profile=`mediainfo --fullscan "$i" | grep -i "Codec profile" | cut -f2 -d ':' | cut -f2 -d '@'`
+            codec_profile=${codec_profile##*( )}
+            
+            # pour chaque format on vérifie si l'encodage est bon
+            if [ "$j" == "mp4" ]
+            then
+                encode=$(isMP4 "$codec_video" "$codec_audio" "$codec_profile" "$frame" "$width" "$height" "$frame_rate_mode")
+                if [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
                 then
                     encode=0
                 fi
+            fi
+            
+            if [ "$j" == "avi" ]
+            then
+                encode=$(isAVI "$codec_video" "$codec_audio" "$matrix" "$gcm")
+	            if [ "$forceAvi" == "1" ]
+	            then
+		            encode=0
+	            fi
+            fi
+            
+            if [ "$j" == "mkv" ]
+            then
+                encode=$(isMkv "$codec_video" "$codec_audio" "$codec_profile")
+                if [ "$forceMKV" == "1" ]
+	            then
+		            encode=0
+	            fi
+            fi
+       
+            
+            if [ "$force" == "1" ]
+            then
+                encode=0
+            fi
+            
+            file_encode_txt="$codec_video and $codec_audio"
+            echo $file_encode_txt
+            
+            # si l'encodage n'est pas bon il faut convertire la vidéo
+            if [ "$encode" == "0" ]
+            then
+                # nom du fichier pour pouvoir créer le bon fichier final
+                b=`basename "$i"`
+	            b=`echo ${b%.*}`
                 
-                file_encode_txt="$codec_video and $codec_audio"
-                echo $file_encode_txt
+                # chemin absolu vers le fichier
+                path=$(dirname "$i")
                 
-                # si l'encodage n'est pas bon il faut convertire la vidéo
-                if [ "$encode" == "0" ]
+                # le chemin du fichier de base
+                init=`echo "$path/$b.$j"`
+                
+                # le chemin du fichier final
+                to=`echo "$path/$b.mp4"`
+
+                #if [ "$j" == "mkv" ]
+                #then
+                #    to=`echo $path/$b.mkv`
+                #fi
+
+                # pour vérifier si le fichier de base et final sont les même
+                same=0
+                if [ "$init" == "$to" ]
                 then
-                    # nom du fichier pour pouvoir créer le bon fichier final
-                    b=`basename "$i"`
-		            b=`echo ${b%.*}`
-                    
-                    # chemin absolu vers le fichier
-                    path=$(dirname "$i")
-                    
-                    # le chemin du fichier de base
-                    init=`echo "$path/$b.$j"`
-                    
-                    # le chemin du fichier final
-                    to=`echo "$path/$b.mp4"`
-
+                    # si c'est le même nom on modifie le nom du fichier final
+                    # sinon le fichier de base sera écraser dès le début et sera
+                    # impossible à récupérer
+                    same=1                        
+                    to=`echo "$path/$b""_1.mp4"`
                     #if [ "$j" == "mkv" ]
-                    #then
-                    #    to=`echo $path/$b.mkv`
+		            #then
+		            #    to=`echo "$path/$b""_1.mkv"` 
                     #fi
+                fi
+                echo "convert $init to $to"
+                
+                # conversion, on écrase si le fichier final existe
+                # En effet si l'on a coupé une conversion le fichier final sera encore présent
+                if [ $test -eq 0 ]
+                then
 
-                    # pour vérifier si le fichier de base et final sont les même
-                    same=0
-                    if [ "$init" == "$to" ]
+                    # 2 cpu utilisés
+                    # les metadatas pour forcer un titre propre pour les clients
+                    # la taille de la vidéo (1080p, 720p, 480p, autres)
+                    # crf 19 pour une qualité d'encodage plutot bonne
+                    # tune pour précisé que c'est de l'animation et donc avoir un encodage optimisé
+                    # profile pour précisé le profile du format High@L3.1 
+                    # level qui correspond au profile
+                    # codec vidéo avc x264
+                    # codec audio acc (encore en mode experimental mais libre de droit donc lisible sur tout support)
+                    file_encode_txt="AVC and AAC LC"
+                    start=`date +%s`
+                    if [ "$j" == "mkv" ]
                     then
-                        # si c'est le même nom on modifie le nom du fichier final
-                        # sinon le fichier de base sera écraser dès le début et sera
-                        # impossible à récupérer
-                        same=1                        
-                        to=`echo "$path/$b""_1.mp4"`
-                        #if [ "$j" == "mkv" ]
-			            #then
-			            #    to=`echo "$path/$b""_1.mkv"` 
-                        #fi
+                        echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
+                        echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                    else
+                        if [ "$hd" == "" ]
+                        then
+                            if [ $libfdk -gt 0 ]
+                            then
+                                if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
+                                then
+                                    echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a libfdk_aac \"$to\""
+                                    avconv -y -i "$init" -threads $thread -c:v copy -c:a libfdk_aac "$to"
+                                else
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+                                fi
+                            else
+                                if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
+                                then
+                                    echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a aac -strict experimental \"$to\""
+                                    avconv -y -i "$init" -threads $thread -c:v copy -c:a aac -strict experimental "$to"
+                                else
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                                fi
+                            fi
+                        else
+                            if [ $libfdk -gt 0 ]
+                            then
+                                if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
+                                then
+                                    echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a libfdk_aac \"$to\""
+                                    avconv -y -i "$init" -threads $thread -c:v copy -c:a libfdk_aac "$to"
+                                else
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
+                                fi
+                            else
+                                if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
+                                then
+                                    echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a aac -strict experimental \"$to\""
+                                    avconv -y -i "$init" -threads $thread -c:v copy -c:a aac -strict experimental "$to"
+                                else
+                                    echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
+                                    avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
+                                fi
+                            fi
+                        fi
                     fi
-                    echo "convert $init to $to"
-                    
-                    # conversion, on écrase si le fichier final existe
-                    # En effet si l'on a coupé une conversion le fichier final sera encore présent
-                    if [ $test -eq 0 ]
-                    then
+                   
+                    # status de la commande avconv
+                    code=$?
+                    end=`date +%s`
+                    runtime=$((end-start))
 
-                        # 2 cpu utilisés
-                        # les metadatas pour forcer un titre propre pour les clients
-                        # la taille de la vidéo (1080p, 720p, 480p, autres)
-                        # crf 19 pour une qualité d'encodage plutot bonne
-                        # tune pour précisé que c'est de l'animation et donc avoir un encodage optimisé
-                        # profile pour précisé le profile du format High@L3.1 
-                        # level qui correspond au profile
-                        # codec vidéo avc x264
-                        # codec audio acc (encore en mode experimental mais libre de droit donc lisible sur tout support)
-                        file_encode_txt="AVC and AAC LC"
-                        start=`date +%s`
+                    echo "result code : $code in $runtime seconds"
+                    
+                    # si la conversion à fonctionné
+                    if [ $code -eq 0 ] 
+                    then
                         if [ "$j" == "mkv" ]
                         then
-                            echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
-                            echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
-                        else
-                            if [ "$hd" == "" ]
-                            then
-                                if [ $libfdk -gt 0 ]
-                                then
-                                    if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                                    then
-                                        echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a libfdk_aac \"$to\""
-                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a libfdk_aac "$to"
-                                    else
-                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
-                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
-                                    fi
-                                else
-                                    if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                                    then
-                                        echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a aac -strict experimental \"$to\""
-                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a aac -strict experimental "$to"
-                                    else
-                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
-                                    fi
-                                fi
-                            else
-                                if [ $libfdk -gt 0 ]
-                                then
-                                    if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                                    then
-                                        echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a libfdk_aac \"$to\""
-                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a libfdk_aac "$to"
-                                    else
-                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac \"$to\""
-                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a libfdk_aac "$to"
-                                    fi
-                                else
-                                    if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                                    then
-                                        echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a aac -strict experimental \"$to\""
-                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a aac -strict experimental "$to"
-                                    else
-                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental \"$to\""
-                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:s ssa -c:a aac -strict experimental "$to"
-                                    fi
-                                fi
-                            fi
+                            exiftool -overwrite_original -all= "$to"
                         fi
-                       
-                        # status de la commande avconv
-                        code=$?
-                        end=`date +%s`
-                        runtime=$((end-start))
-
-                        echo "result code : $code in $runtime seconds"
-                        
-                        # si la conversion à fonctionné
-                        if [ $code -eq 0 ] 
+                            
+                        # si c'est le même fichier que la base on fait un simple mv
+                        # sinon on supprime le fichier de base devenu inutile
+                        if [ "$same" == "1" ]
                         then
+                            hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
+                            if [ "$hist" != "" ]
+                            then
+                                sed -i $hist'd' ~/.encode_file
+                            fi
+                            echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
+                            echo "mv $to $init"
+                            mv "$to" "$init"
+                        else
+                            hist=`grep -rne "$to" ~/.encode_file | cut -f1 -d ':'`
+                            if [ "$hist" != "" ]
+                            then
+                                sed -i $hist'd' ~/.encode_file
+                            fi
+                            echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
+                            echo "rm $init"
+                            rm "$init"
+                        fi
+                        notify-send "convertion de $init terminée en $runtime secondes"
+                    else
+                        # probleme d'encodage du son apparement
+                        if ([ $code -eq 134 ] || [ $code -eq 139 ]) && [ "$forceAc3" == "0" ]
+                        then
+                            notify-send "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
+                            file_encode_txt="AVC and AC3"
+                            start=`date +%s`
                             if [ "$j" == "mkv" ]
                             then
-                                exiftool -overwrite_original -all= "$to"
-                            fi
-                                
-                            # si c'est le même fichier que la base on fait un simple mv
-                            # sinon on supprime le fichier de base devenu inutile
-                            if [ "$same" == "1" ]
-                            then
-                                hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
-                                if [ "$hist" != "" ]
-                                then
-                                    sed -i $hist'd' ~/.encode_file
-                                fi
-                                echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
-                                echo "mv $to $init"
-                                mv "$to" "$init"
+                                echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
+                                echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
                             else
-                                hist=`grep -rne "$to" ~/.encode_file | cut -f1 -d ':'`
-                                if [ "$hist" != "" ]
+                                if [ "$hd" == "" ]
                                 then
-                                    sed -i $hist'd' ~/.encode_file
+                                    if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
+                                    then
+                                        echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3 \"$to\""
+                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a ac3 "$to"
+                                    else
+                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
+                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+                                    fi
+                                else
+                                    if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
+                                    then
+                                        echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3 \"$to\""
+                                        avconv -y -i "$init" -threads $thread -c:v copy -c:a ac3 "$to"
+                                    else
+                                        echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
+                                        avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
+                                    fi
                                 fi
-                                echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
-                                echo "rm $init"
-                                rm "$init"
                             fi
-                            notify-send "convertion de $init terminée en $runtime secondes"
-                        else
-                            # probleme d'encodage du son apparement
-                            if ([ $code -eq 134 ] || [ $code -eq 139 ]) && [ "$forceAc3" == "0" ]
+                            
+                            code=$?
+                            
+                            end=`date +%s`
+                            runtime=$((end-start))
+                            echo "result code : $code in $runtime seconds"
+                            
+                            # si la conversion à fonctionné
+                            if [ $code -eq 0 ] 
                             then
-                                notify-send "erreur d'encodage $init reessai avec codec AC3 après $runtime secondes"
-                                file_encode_txt="AVC and AC3"
-                                start=`date +%s`
                                 if [ "$j" == "mkv" ]
                                 then
-                                    echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
-                                    echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
-                                else
-                                    if [ "$hd" == "" ]
-                                    then
-                                        if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                                        then
-                                            echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3 \"$to\""
-                                            avconv -y -i "$init" -threads $thread -c:v copy -c:a ac3 "$to"
-                                        else
-                                            echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
-                                            avconv -y -i "$init" -threads $thread -metadata title="$b" -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
-                                        fi
-                                    else
-                                        if [ "$v_copy" == "1" ] && [ "$forceAc3" == "1" ] && [ "$codec_audio" == "AC3" ]
-                                        then
-                                            echo "avconv -y -i \"$init\" -threads $thread -c:v copy -c:a ac3 \"$to\""
-                                            avconv -y -i "$init" -threads $thread -c:v copy -c:a ac3 "$to"
-                                        else
-                                            echo "avconv -y -i \"$init\" -threads $thread -metadata title=\"$b\" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa \"$to\""
-                                            avconv -y -i "$init" -threads $thread -metadata title="$b" -s:v $hd -crf 19 -tune animation -profile:v high -level 31 -c:v h264 -refs 4 -c:a ac3 -c:s ssa "$to"
-                                        fi
-                                    fi
+                                    exiftool -overwrite_original -all= "$to"
                                 fi
-                                
-                                code=$?
-                                
-                                end=`date +%s`
-                                runtime=$((end-start))
-                                echo "result code : $code in $runtime seconds"
-                                
-                                # si la conversion à fonctionné
-                                if [ $code -eq 0 ] 
+                                # si c'est le même fichier que la base on fait un simple mv
+                                # sinon on supprime le fichier de base devenu inutile
+                                if [ "$same" == "1" ]
                                 then
-                                    if [ "$j" == "mkv" ]
+                                    hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
+                                    if [ "$hist" != "" ]
                                     then
-                                        exiftool -overwrite_original -all= "$to"
+                                        sed -i $hist'd' ~/.encode_file
                                     fi
-                                    # si c'est le même fichier que la base on fait un simple mv
-                                    # sinon on supprime le fichier de base devenu inutile
-                                    if [ "$same" == "1" ]
-                                    then
-                                        hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
-                                        if [ "$hist" != "" ]
-                                        then
-                                            sed -i $hist'd' ~/.encode_file
-                                        fi
-                                        echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
-                                        echo "mv $to $init"
-                                        mv "$to" "$init"
-                                    else
-                                        hist=`grep -rne "$to" ~/.encode_file | cut -f1 -d ':'`
-                                        if [ "$hist" != "" ]
-                                        then
-                                            sed -i $hist'd' ~/.encode_file
-                                        fi
-                                        echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
-                                        echo "rm $init"
-                                        rm "$init"
-                                    fi
-                                    notify-send "convertion de $init terminée en $runtime secondes"
+                                    echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
+                                    echo "mv $to $init"
+                                    mv "$to" "$init"
                                 else
-                                    # en cas d'erreur on supprime le fichier final mal converti
-                                    echo "rm $to"
-                                    rm "$to"
-                                    notify-send "convertion de $init échouée en $runtime secondes"
+                                    hist=`grep -rne "$to" ~/.encode_file | cut -f1 -d ':'`
+                                    if [ "$hist" != "" ]
+                                    then
+                                        sed -i $hist'd' ~/.encode_file
+                                    fi
+                                    echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
+                                    echo "rm $init"
+                                    rm "$init"
                                 fi
-                            fi
-                            # en cas d'erreur on supprime le fichier final mal converti
-                            echo "rm $to"
-                            rm "$to"
-                            if [ $code -eq 255 ]
-			                then
-                                notify-send "convertion de $init annulée"
+                                notify-send "convertion de $init terminée en $runtime secondes"
                             else
-                                notify-send "convertion de $init échouée"
+                                # en cas d'erreur on supprime le fichier final mal converti
+                                echo "rm $to"
+                                rm "$to"
+                                notify-send "convertion de $init échouée en $runtime secondes"
                             fi
                         fi
+                        # en cas d'erreur on supprime le fichier final mal converti
+                        echo "rm $to"
+                        rm "$to"
+                        if [ $code -eq 255 ]
+		                then
+                            notify-send "convertion de $init annulée"
+                        else
+                            notify-send "convertion de $init échouée"
+                        fi
                     fi
-                else
-		            hist=`grep -rne "$i" ~/.encode_file | cut -f1 -d ':'`
-                    if [ "$hist" != "" ]
-                    then
-                        sed -i $hist'd' ~/.encode_file
-                    fi
-
-                    echo "$i#$file_encode_txt#$hd" >> ~/.encode_file
-                fi # fin du test mauvais encodage
+                fi
             else
-                echo "$encode_type"
-            fi
-        fi # fin test du type de fichier
-    done # fin de la liste des fichiers
-fi # fin du test du nombre d'argument
+	            hist=`grep -rne "$i" ~/.encode_file | cut -f1 -d ':'`
+                if [ "$hist" != "" ]
+                then
+                    sed -i $hist'd' ~/.encode_file
+                fi
+
+                echo "$i#$file_encode_txt#$hd" >> ~/.encode_file
+            fi # fin du test mauvais encodage
+        else
+            echo "$encode_type"
+        fi
+    fi # fin test du type de fichier
+done # fin de la liste des fichiers
