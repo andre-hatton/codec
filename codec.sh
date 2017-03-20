@@ -114,9 +114,10 @@ force=0
 v_copy=0
 thread=0
 deleteDuplicate=0
+no_copy=0
 
 # parcours les options passé au script
-while getopts "i:t:f:cdh" option
+while getopts "i:t:f:cdhn" option
 do
 	  case $option in
 	    i)
@@ -146,6 +147,9 @@ do
 			c)
 				v_copy=1
 				;;
+            n)
+                no_copy=1
+                ;;
 			h)
 				echo -e "Usage: ./codec.sh -i directory [options]\n\nGlobal options\n-i\t\tinput path\n-d\t\tdelete duplicate entry history\n-t thread\tnumber usage cpu\n-f typeCodec\tforce re-encode (possible valid : ac3, mkv, avi, all)\n-c\t\tcopy video codec (ac3 only)\n\nExample:\nmkv to mp4: ./codec.sh -i /home/user/videos/ -d -t 2 -f mkv\nac3 to aac whithout video encoding: ./codec.sh -i /home/user/videos/ -f ac3 -c"
 				exit 1
@@ -404,14 +408,19 @@ fi
                             # sinon on supprime le fichier de base devenu inutile
                             if [ "$same" == "1" ]
                             then
-                                hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
-                                if [ "$hist" != "" ]
+                                if [ "$no_copy" == "0" ]
                                 then
-                                    sed -i '' -e $hist'd' ~/.encode_file
+                                    hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
+                                    if [ "$hist" != "" ]
+                                    then
+                                        sed -i '' -e $hist'd' ~/.encode_file
+                                    fi
+                                    echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
+                                    echo "mv $to $init"
+                                    mv "$to" "$init"
+                                else
+                                    echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
                                 fi
-                                echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
-                                echo "mv $to $init"
-                                mv "$to" "$init"
                             else
                                 hist=`grep -rne "$to" ~/.encode_file | cut -f2 -d ':'`
                                 if [ "$hist" != "" ]
@@ -419,8 +428,11 @@ fi
                                     sed -i '' -e $hist'd' ~/.encode_file
                                 fi
                                 echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
-                                echo "rm $init"
-                                rm "$init"
+                                if [ "$no_copy" == "0" ]
+                                then
+                                    echo "rm $init"
+                                    rm "$init"
+                                fi
                             fi
                             terminal-notifier -title "convert.sh" -message "conversion de $init terminée en $runtime secondes"
                         else
@@ -474,14 +486,19 @@ fi
                                     # sinon on supprime le fichier de base devenu inutile
                                     if [ "$same" == "1" ]
                                     then
-                                        hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
-                                        if [ "$hist" != "" ]
+                                        if [ "$no_copy" == "0" ]
                                         then
-                                            sed -i '' -e $hist'd' ~/.encode_file
+                                            hist=`grep -rne "$init" ~/.encode_file | cut -f2 -d ':'`
+                                            if [ "$hist" != "" ]
+                                            then
+                                                sed -i '' -e $hist'd' ~/.encode_file
+                                            fi
+                                            echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
+                                            echo "mv $to $init"
+                                            mv "$to" "$init"
+                                        else
+                                            echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
                                         fi
-                                        echo "$init#$file_encode_txt#$hd" >> ~/.encode_file
-                                        echo "mv $to $init"
-                                        mv "$to" "$init"
                                     else
                                         hist=`grep -rne "$to" ~/.encode_file | cut -f2 -d ':'`
                                         if [ "$hist" != "" ]
@@ -489,8 +506,11 @@ fi
                                             sed -i '' -e $hist'd' ~/.encode_file
                                         fi
                                         echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
-                                        echo "rm $init"
-                                        rm "$init"
+                                        if [ "$no_copy" == "0" ]
+                                        then
+                                            echo "rm $init"
+                                            rm "$init"
+                                        fi
                                     fi
                                     terminal-notifier -title "convert.sh" -message "conversion de $init terminée en $runtime secondes"
                                 else
