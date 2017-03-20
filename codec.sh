@@ -114,7 +114,7 @@ v_copy=0
 thread=0
 deleteDuplicate=0
 no_copy=0
-while getopts "i:t:f:cdn" option
+while getopts "i:t:f:cdnh" option
 do
     case $option in
     i)
@@ -146,6 +146,10 @@ do
 		    ;;
             n)
 	            no_copy=1
+                    ;;
+            h)
+	            echo -e "Usage: ./codec.sh -i directory [options]\n\nGlobal options\n-i\t\tinput path\n-d\t\tdelete duplicate entry history\n-t thread\tnumber usage cpu\n-f typeCodec\tforce re-encode (possible valid : ac3, mkv, avi, all)\n-c\t\tcopy video codec (ac3 only)\n\nExample:\nmkv to mp4: ./codec.sh -i /home/user/videos/ -d -t 2 -f mkv\nac3 to aac whithout video encoding: ./codec.sh -i /home/user/videos/ -f ac3 -c"
+		    exit 1
                     ;;
 	    :)
 		    echo "L'option $OPTARG requiert un argument"
