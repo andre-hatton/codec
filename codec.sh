@@ -398,7 +398,7 @@ do
                         # sinon on supprime le fichier de base devenu inutile
                         if [ "$same" == "1" ]
                         then
-                            if [ "$n" == "0" ] 
+                            if [ "$no_copy" == "0" ] 
                             then
                                 hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
                                 if [ "$hist" != "" ]
@@ -418,7 +418,7 @@ do
                                 sed -i $hist'd' ~/.encode_file
                             fi
                             echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
-                            if [ "$n" == "0" ]
+                            if [ "$no_copy" == "0" ]
                             then
                                 echo "rm $init"
                                 rm "$init"
@@ -477,7 +477,7 @@ do
                                 if [ "$same" == "1" ]
                                 then
                                   
-                                    if [ "$n" == "0" ] 
+                                    if [ "$no_copy" == "0" ] 
                                         hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
                                         if [ "$hist" != "" ]
                                         then
@@ -496,7 +496,7 @@ do
                                         sed -i $hist'd' ~/.encode_file
                                     fi
                                     echo "$to#$file_encode_txt#$hd" >> ~/.encode_file
-                                    if [ "$n" == "0" ] 
+                                    if [ "$no_copy" == "0" ] 
                                     then
                                         echo "rm $init"
                                         rm "$init"
