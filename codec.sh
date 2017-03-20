@@ -4,20 +4,19 @@
 
 test=0
 
-echo "Suppression des fichiers en double dans l'historique (cela peut prendre un peu de temps)"
-./deleteDuplicateFileHistory.sh
-
 # pour pouvoir supprimer les blancs d'un string
 shopt -s extglob
 
-type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not installed.  Aborting."; exit 1; }
-type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed.  Aborting."; exit 1; }
-type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed.  Aborting."; exit 1; }
-type terminal-notifier >/dev/null 2>&1 || { echo >&2 "I require terminal-notifier but it's not installed.  Aborting."; exit 1; }
-type exiftool >/dev/null 2>&1 || { echo >&2 "I require exiftool but it's not installed.  Aborting."; exit 1; }
+# vérifie que l'intégralité des commande obligatoire soient installées sur le système
+type avconv >/dev/null 2>&1 || { echo >&2 "I require avconv but it's not installed. Aborting."; exit 1; }
+type HandBrakeCLI >/dev/null 2>&1 || { echo >&2 "I require HandBrakeCLI but it's not installed. Aborting."; exit 1; }
+type mediainfo >/dev/null 2>&1 || { echo >&2 "I require mediainfo but it's not installed. Aborting."; exit 1; }
+type terminal-notifier >/dev/null 2>&1 || { echo >&2 "I require terminal-notifier but it's not installed. Aborting."; exit 1; }
+type exiftool >/dev/null 2>&1 || { echo >&2 "I require exiftool but it's not installed. Aborting."; exit 1; }
 
 # on vérifie si la librairie aac stable est activé (sinon on utilise la librairie native non stable)
 libfdk=`avconv -codecs | grep libfdk_aac | wc -l`
+
 # Vérifie si la vidéo a les bons codecs pour le format mp4
 isMP4() 
 {
@@ -107,39 +106,85 @@ isMkv()
     echo $ok
 }
 
-# l'argument du chemin est obligatoire
-if [ $# -gt 0 ]
+# initialisation des variable de parametrage
+forceAc3=0
+forceMKV=0
+forceAvi=0
+force=0
+v_copy=0
+thread=0
+deleteDuplicate=0
+
+# parcours les options passé au script
+while getopts "i:t:f:cdh" option
+do
+	  case $option in
+	    i)
+				input=$OPTARG
+	      ;;
+			t)
+				thread=$OPTARG
+				;;
+			d)
+				deleteDuplicate=1
+				;;
+			f)
+				if [ "$OPTARG" == "ac3" ]
+				then
+					forceAc3=1
+				elif [ "$OPTARG" == "mkv" ]
+				then
+					forceMKV=1
+				elif [ "$OPTARG" == "avi" ]
+				then
+					forceAvi=1
+				elif [ "$OPTARG" == "all" ]
+				then
+					force=1
+				fi
+				;;
+			c)
+				v_copy=1
+				;;
+			h)
+				echo -e "Usage: ./codec.sh -i directory [options]\n\nGlobal options\n-i\t\tinput path\n-d\t\tdelete duplicate entry history\n-t thread\tnumber usage cpu\n-f typeCodec\tforce re-encode (possible valid : ac3, mkv, avi, all)\n-c\t\tcopy video codec (ac3 only)\n\nExample:\nmkv to mp4: ./codec.sh -i /home/user/videos/ -d -t 2 -f mkv\nac3 to aac whithout video encoding: ./codec.sh -i /home/user/videos/ -f ac3 -c"
+				exit 1
+				;;
+			:)
+				echo "L'option $OPTARG requiert un argument"
+				;;
+			\?)
+				echo "$OPTARG : option invalide"
+				exit 1
+				;;
+	  esac
+done
+
+# parametre -i manquant
+if [ "$input" == "" ]
 then
-    thread=2
-    force=0
-    forceAc3=0
-    if [ $# -gt 1 ]
-    then
-        if [ "$2" == "-f" ]
-        then
-            force=1
-        elif [ "$2" == "avi" ]
-	    then
-	        forceAvi=1
-  	elif [ "$2" == "ac3" ]
-	    then
-		forceAc3=1
-	    elif [ "$2" == "mkv" ]
-	    then
-		forceMKV=1
-	    else
-	    thread=$2
-        fi
-    fi
-		if [ "$3" == "copy" ] 
-		then
-			v_copy=1
-		fi
-    # Parcours de tout les fichiers à partir du répertoir donné
-    find "$1" -type f | sort -n | while read i
+	echo "Le chemin d'entrée est obligatoire : Option -i nécessaire"
+	exit 1
+fi
+
+# supprime l'historique en doublon si l'option -d existe
+if [ "$deleteDuplicate" == "1" ]
+then
+	echo "Suppression des fichiers en double dans l'historique (cela peut prendre un peu de temps)"
+	./deleteDuplicateFileHistory.sh
+fi
+
+# empêche l'encodage audio seul si on n'encode pas des mp4 ac3
+if [ "$forceAc3" == "0" ] && [ "$v_copy" == "1" ]
+then
+	v_copy=0
+fi
+
+    # Parcours de tout les fichiers à partir du répertoire donné
+    find "$input" -type f | sort -n | while read i
     # find "$1" -type f -printf '%h\0%d\0%p\n' | sort -t '\0' -n | awk -F '\0' '{print $3}' | while read i
     do
-        # récupération de lextension du fichier
+        # récupération de l’extension du fichier
         j=`echo $i |awk -F . '{if (NF>1) {print $NF}}'`
         
         # si c'est un fichier vidéo mp4, avi ou mkv
@@ -379,7 +424,7 @@ then
                             fi
                             terminal-notifier -title "convert.sh" -message "conversion de $init terminée en $runtime secondes"
                         else
-                            # probleme d'encodage du son apparement
+                            # problème d'encodage du son apparement
                             if [ $code -eq 134 ] || [ $code -eq 139 ]
                             then
                                 terminal-notifier -title "convert.sh" -message "erreur d'encodage $init ressaie avec codec AC3 après $runtime secondes"
@@ -447,12 +492,12 @@ then
                                         echo "rm $init"
                                         rm "$init"
                                     fi
-                                    terminal-notifier -title "convert.sh" -message "convertion de $init terminée en $runtime secondes"
+                                    terminal-notifier -title "convert.sh" -message "conversion de $init terminée en $runtime secondes"
                                 else
                                     # en cas d'erreur on supprime le fichier final mal converti
                                     echo "rm $to"
                                     rm "$to"
-                                    terminal-notifier -title "convert.sh" -message "convertion de $init échouée en $runtime secondes"
+                                    terminal-notifier -title "convert.sh" -message "conversion de $init échouée en $runtime secondes"
                                 fi
                             fi
                             # en cas d'erreur on supprime le fichier final mal converti
@@ -460,9 +505,9 @@ then
                             rm "$to"
                             if [ $code -eq 255 ]
 			    then
-                                terminal-notifier -title "convert.sh" -message "convertion de $init annulée"
+                                terminal-notifier -title "convert.sh" -message "conversion de $init annulée"
                             else
-                                terminal-notifier -title "convert.sh" -message "convertion de $init échouée"
+                                terminal-notifier -title "convert.sh" -message "conversion de $init échouée"
                             fi
                         fi
                     fi
@@ -479,4 +524,3 @@ then
             fi
         fi # fin test du type de fichier
     done # fin de la liste des fichiers
-fi # fin du test du nombre d'argument
