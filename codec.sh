@@ -482,6 +482,7 @@ do
                                 then
                                   
                                     if [ "$no_copy" == "0" ] 
+                                    then
                                         hist=`grep -rne "$init" ~/.encode_file | cut -f1 -d ':'`
                                         if [ "$hist" != "" ]
                                         then
@@ -518,7 +519,7 @@ do
                         echo "rm $to"
                         rm "$to"
                         if [ $code -eq 255 ]
-		                then
+	                then
                             notify-send "convertion de $init annulée"
                         else
                             notify-send "convertion de $init échouée"
