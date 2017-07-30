@@ -37,7 +37,7 @@ isMP4()
     fi
     
     # la ps4 lit mal en 16 frames
-    if [ "$4" == "16" ]
+    if [ "$4" == "16" ] || [ "$4" == "1" ]
     then
         ok=0
     fi
@@ -170,7 +170,23 @@ fi
 if [ "$deleteDuplicate" == "1" ]
 then
 	echo "Suppression des fichiers en double dans l'historique (cela peut prendre un peu de temps)"
-	./deleteDuplicateFileHistory.sh
+  	i=1
+	cat ~/.encode_file | while read l
+	do
+	    f=`echo $l | cut -f1 -d'#'`
+	    b=`basename "$f"`
+	    file_name=`echo ${b%.*}`
+	    dir_name=`dirname "$f"`
+	    search="$dir_name/$file_name\.[a-z]"
+	    count=`cat ~/.encode_file | grep "$search" | wc -l`
+	    if [ $count -gt 1 ]
+	    then
+	        echo $l
+	        sed -i $i'd' ~/.encode_file
+	    else
+	        i=$((i+1))
+	    fi
+	done
 fi
 
 
@@ -334,8 +350,8 @@ do
                     start=`date +%s`
                     if [ "$j" == "mkv" ]
                     then
-                        echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
-                        echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                        echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8 --crop 0:0:0:0"
+                        echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8 --crop 0:0:0:0
                     else
                         if [ "$hd" == "" ]
                         then
@@ -438,8 +454,8 @@ do
                             start=`date +%s`
                             if [ "$j" == "mkv" ]
                             then
-                                echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8"
-                                echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8
+                                echo "HandBrakeCLI -i \"$init\" -o \"$to\" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle \"1\"  -E av_aac --encoder-tune \"animation\" --encoder-profile \"high\" --encoder-level \"3.1\" -x ref=4:frameref=4:threads=2 --subtitle-burn \"1\" --srt-codeset utf8 --crop 0:0:0:0"
+                                echo "" | HandBrakeCLI -i "$init" -o "$to" -e x264 -q 20 -B 160 --x264-preset medium --two-pass -O --turbo --subtitle "1"  -E av_aac --encoder-tune "animation" --encoder-profile "high" --encoder-level "3.1" -x ref=4:frameref=4:threads=2 --subtitle-burn "1" --srt-codeset utf8 --crop 0:0:0:0
                             else
                                 if [ "$hd" == "" ]
                                 then
